@@ -1,0 +1,94 @@
+<body>
+    <h1>
+        RECORD
+    </h1>
+    <input type="file" id="inputfile" />
+    <button onclick=prev()>Prev</button>
+    <button onclick=startRecord()>Start</button>
+    <button onclick=next()>Next</button>
+    <h2 id="text"></h2>
+</body>
+
+<script>
+    var mediaRecorder;
+    var texts = [];
+    var idx = 0;
+    var currentName = null;
+    const audioChunks = [];
+    const recorder = async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        var options = { mimeType: 'audio/webm' };
+        mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder.addEventListener("dataavailable", event => {
+            audioChunks.push(event.data);
+        });
+    }
+    recorder()
+
+    const start = () => {
+        const audioChunks = [];
+        mediaRecorder.start();
+    }
+
+    const stop = () =>
+        new Promise(resolve => {
+            mediaRecorder.addEventListener("stop", () => {
+                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                const play = () => audio.play();
+                resolve({ audioBlob, audioUrl, play });
+            });
+
+            mediaRecorder.stop();
+        });
+
+    const startRecord = () => {
+        console.log("started record");
+        start();
+    }
+    const stopRecord = async () => {
+        console.log("stopped record");
+        const audio = await stop();
+        saveData(audio.audioUrl);
+    }
+
+    var saveData = (url) => {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.style = "display: none";
+        a.href = url;
+        a.download = currentName;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('inputfile')
+        .addEventListener('change', function () {
+            var fr = new FileReader();
+            fr.onload = function () {
+                texts = fr.result.split("\n");
+                console.log(texts)
+                idx = 0;
+                changeText(idx);
+            }
+            fr.readAsText(this.files[0]);
+        }) 
+    
+    const changeText = (idx) => {
+        var splits = texts[idx].split('|');
+        currentName = splits[0]
+        document.getElementById('text').innerHTML = splits[1]
+    }
+
+    const next = () => {
+        stopRecord()
+        idx++;
+        changeText(idx);
+    }   
+
+    const prev = () => {
+        idx--;
+        changeText(idx);
+    }
+</script>
